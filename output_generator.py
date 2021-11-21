@@ -3,6 +3,8 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 from docx.shared import Cm
+import latex2mathml.converter
+from lxml import etree
 
 from bibliography_parser import book_text
 from logger import log
@@ -19,10 +21,14 @@ class DocxGenerator:
         self.book_tags = {}
         self.table_numbering = 'global'
         self.picture_numbering = 'global'
+        
+        xslt = etree.parse('mml2omml.xsl')
+        self.math_transform = etree.XSLT(xslt)
+                
     
     def reset_counters(self):
         self.current_section = 0
-        self.current_subsection = 0
+        self.current_subsections = [0, 0, 0, 0, 0]
         self.table_global_counter = 0
         self.picture_global_counter = 0
         self.table_section_counter = 0
@@ -31,6 +37,8 @@ class DocxGenerator:
 
     def section_numbering(self, number):
         return str(self.current_section) + '.' + str(number)
+    def section_numbering_full(self, level):
+        return str(self.current_section) + '.' + '.'.join([str(x) for x in self.current_subsections[:level-1]])
     def picture_number(self, plus_one=False):
         add = 1 if plus_one else 0
         if self.picture_numbering == 'section':
@@ -144,7 +152,7 @@ class DocxGenerator:
 
         if level == 1:
             self.current_section += 1
-            self.current_subsection = 0
+            self.current_subsections = [0, 0, 0, 0, 0]
             self.table_section_counter = 0
             self.picture_section_counter = 0
 
@@ -154,9 +162,11 @@ class DocxGenerator:
             if should_autonumber and text[0] not in '123456789':
                 text = str(self.current_section) + ' ' + text
         else:
-            self.current_subsection += 1
+            self.current_subsections[level-2] += 1
+            for i in range(level-1, len(self.current_subsections)):
+                self.current_subsections[i] = 0
             if should_autonumber and text[0] not in '123456789':
-                text = self.section_numbering(self.current_subsection) + ' ' + text
+                text = self.section_numbering_full(level) + ' ' + text
 
         self.pad_if_needed('headingsArePadded')
         heading = self.document.add_heading(text, level=level)
@@ -189,11 +199,18 @@ class DocxGenerator:
         placeholder = self.settings.get('equationPlaceholder', 'ВВЕДИТЕ УРАВНЕНИЕ')
         if obj['children'] == '':
             text = placeholder
+            mathml = None
         else:
             text = obj['children']
             if text.startswith('!'):
                 text = placeholder + '(' + text[1:] + ')'
-        
+                mathml = None
+            else:
+                mathml = latex2mathml.converter.convert(text)
+                tree = etree.fromstring(mathml)
+                new_tree = self.math_transform(tree)
+                run._r.append(new_tree.getroot())
+                return
         mainTextElem = OxmlElement('m:t')
         mainTextElem.text = text
         runElem = OxmlElement('m:r')
@@ -267,7 +284,8 @@ class DocxGenerator:
     def aggregate_text(self, objs):
         result = ''
         for obj in objs:
-            if obj['type'] == 'equation' or obj['type'] == 'book_ref' or obj['type'] == 'ref':
+            if (obj['type'] == 'equation' or obj['type'] == 'book_ref' or obj['type'] == 'ref' 
+                    or obj['type'] == 'inline_code'):
                 result += obj['children']
                 continue
             if 'text' in obj:
@@ -301,6 +319,12 @@ class DocxGenerator:
                     index = self.tags[tag]
                 run = paragraph.add_run(index)
                 continue
+            elif obj['type'] == 'codespan':
+                run = paragraph.add_run(obj['text'])
+                run.bold = strong
+                run.italic = emphasis
+                run.style = 'InlineCode'
+                continue
             if 'text' in obj:
                 run = paragraph.add_run(obj['text'])
                 run.bold = strong
@@ -328,11 +352,13 @@ class DocxGenerator:
                 if text.casefold() in self.structural_headings_casefolded:
                     return
                 self.current_section += 1
-                self.current_subsection = 1
+                self.current_subsections = [0, 0, 0, 0, 0]
                 self.table_section_counter = 0
                 self.picture_section_counter = 0
             else:
-                self.current_subsection += 1
+                self.current_subsections[obj['level']-2] += 1
+                for i in range(obj['level']-1, len(self.current_subsections)):
+                    self.current_subsections[i] = 0
         elif obj['type'] == 'block_table':
             self.table_global_counter += 1
             self.table_section_counter += 1

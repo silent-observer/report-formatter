@@ -2,6 +2,7 @@ import input_parser
 import output_generator
 import pprint
 import sys, os
+from os import path
 import re
 import logger
 import traceback
@@ -19,9 +20,9 @@ else:
         generator = output_generator.DocxGenerator()
 
         filename = sys.argv[1]
-        folder = re.match(r'^(.*)[/\\][^/\\]+$', filename)
-        if folder:
-            os.chdir(folder.group(1))
+        folder, filename = path.split(filename)
+        if folder != '':
+            os.chdir(folder)
         parsed = input_parser.parse_markdown(filename)
         #pprint.pprint(parsed)
         settings = {
