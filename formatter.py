@@ -27,7 +27,7 @@ else:
         #pprint.pprint(parsed)
         settings = {
             'headingsArePadded': True,
-            'blockEquationsArePadded': True,
+            'blockEquationsArePadded': False,
             'tocTitle': 'Содержание',
             'sectionPageBreak': True,
             'headingsAutonumber': True,

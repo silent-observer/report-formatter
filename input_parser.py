@@ -3,8 +3,8 @@ import re
 from bibliography_parser import DirectiveBook
 from logger import log
 
-EQUATION_PATTERN = r'''\$(!?[^$\n]*)\$'''
-BLOCK_EQUATION_PATTERN = re.compile(r''' {0,3}!equation *([a-zA-Z0-9а-яА-Я ]*)\n''')
+EQUATION_PATTERN = r'''(?<!\$)\$([^$\n]+)\$'''
+BLOCK_EQUATION_PATTERN = re.compile(r''' *\$\$([^$\n]*)\$\$\n''')
 
 def parse_equation(inline, m, state):
     text = m.group(1)

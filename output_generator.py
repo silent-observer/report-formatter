@@ -184,12 +184,14 @@ class DocxGenerator:
         ordered = obj['ordered']
         for i, elem in enumerate(obj['children'], start=1):
             text = self.aggregate_text(elem['children'])
+            prefix = (obj['level']-1) * '\t'
             if ordered:
-                prefix = str(i) + ') '
+                prefix += str(i) + ') '
             else:
-                prefix = '- '
+                prefix += '- '
             if text[-1] != ',' and i != len(obj['children']):
                 text += ','
+            #if paragraph is None:
             paragraph = self.document.add_paragraph()
             paragraph.add_run(prefix)
             self.add_text(paragraph, elem['children'])
@@ -221,11 +223,19 @@ class DocxGenerator:
     def generate_block_equation(self, obj):
         self.pad_if_needed('blockEquationsArePadded')
         mainTextElem = OxmlElement('m:t')
-        text = self.aggregate_text(obj['children'])
+        if 'text' in obj:
+            text = obj['text']
+        else:
+            text = self.aggregate_text(obj['children'])
         if text == '':
             mainTextElem.text = self.settings.get('equationPlaceholder', 'ВВЕДИТЕ УРАВНЕНИЕ')
         else:
-            mainTextElem.text = text
+            mathml = latex2mathml.converter.convert(text)
+            tree = etree.fromstring(mathml)
+            new_tree = self.math_transform(tree)
+            paragraph = self.document.add_paragraph()
+            paragraph._p.append(new_tree.getroot())
+            return
         runElem = OxmlElement('m:r')
         runElem.append(mainTextElem)
         mathElem = OxmlElement('m:oMath')
@@ -325,7 +335,14 @@ class DocxGenerator:
                 run.italic = emphasis
                 run.style = 'InlineCode'
                 continue
+            elif obj['type'] == 'list':
+                self.generate_list(obj)
+                continue
             if 'text' in obj:
+                if obj['text'].lstrip()[:2] == "$$" and obj['text'].rstrip()[-2:] == "$$":
+                    obj['text'] = obj['text'][2:-2]
+                    self.generate_block_equation(obj)
+                    continue
                 run = paragraph.add_run(obj['text'])
                 run.bold = strong
                 run.italic = emphasis
