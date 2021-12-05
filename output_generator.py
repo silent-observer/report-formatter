@@ -68,7 +68,7 @@ class DocxGenerator:
         fldChar.set(qn('w:fldCharType'), 'begin')  # sets attribute on element
         instrText = OxmlElement('w:instrText')
         instrText.set(qn('xml:space'), 'preserve')  # sets attribute on element
-        instrText.text = 'TOC \\o "1-2" \\h \\z \\u'   # change 1-3 depending on heading levels you need
+        instrText.text = 'TOC \\o "1-3" \\h \\z \\u'   # change 1-3 depending on heading levels you need
 
         fldChar2 = OxmlElement('w:fldChar')
         fldChar2.set(qn('w:fldCharType'), 'separate')
@@ -356,7 +356,7 @@ class DocxGenerator:
         self.generate_structural_heading(
             self.settings.get('biblioTitle', 'СПИСОК ИСПОЛЬЗУЕМЫХ ИСТОЧНИКОВ'))
         for i, book in enumerate(self.books, start=1):
-            self.document.add_paragraph(str(i) + ') ' + book)
+            self.document.add_paragraph(str(i) + '. ' + book)
 
     def register_ast(self, ast):
         for x in ast:

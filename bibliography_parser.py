@@ -22,8 +22,11 @@ class DirectiveBook(Directive):
         publisher = None
         year = None
         pages = None
+        volume = None
+        source = None
         tag = None
         isbn = None
+        doi = None
         url = None
         date = None
 
@@ -41,6 +44,10 @@ class DirectiveBook(Directive):
                 edition = val
             elif key == 'city':
                 city = val
+            elif key == 'volume':
+                volume = val
+            elif key == 'source':
+                source = val
             elif key == 'publisher' or key == 'website':
                 publisher = val
             elif key == 'year':
@@ -53,7 +60,10 @@ class DirectiveBook(Directive):
                     }
             elif key == 'pages':
                 try:
-                    pages = int(val)
+                    if book_type == 'article':
+                        pages = val
+                    else:
+                        pages = int(val)
                 except (ValueError, TypeError):
                     return {
                         'type': 'block_error',
@@ -61,6 +71,8 @@ class DirectiveBook(Directive):
                     }
             elif key == 'isbn':
                 isbn = val
+            elif key == 'doi':
+                doi = val
             elif key == 'url':
                 url = val
             elif key == 'date' or key == 'date-of-access':
@@ -77,7 +89,7 @@ class DirectiveBook(Directive):
         
         return {'type': 'book', 'raw': None, 'params': 
             (title, book_type, authors, other_people, title_info, 
-            edition, city, publisher, year, pages, isbn, url, date, tag)}
+            edition, city, publisher, year, pages, volume, source, isbn, doi, url, date, tag)}
     def __call__(self, md):
         self.register_directive(md, 'book')
         if md.renderer.NAME == 'ast':
@@ -88,8 +100,11 @@ class DirectiveBook(Directive):
         md.inline.rules.insert(index, 'book_ref')
 
 
-def render_ast_book(children, title, book_type, authors, other_people, title_info, 
-                    edition, city, publisher, year, pages, isbn, url, date, tag):
+def render_ast_book(children, title, book_type, authors, 
+                    other_people, title_info, 
+                    edition, city, publisher, year, pages,
+                    volume, source, isbn, doi, url,
+                    date, tag):
     return {
         'type': 'book',
         'title': title,
@@ -102,7 +117,10 @@ def render_ast_book(children, title, book_type, authors, other_people, title_inf
         'publisher': publisher,
         'year': year,
         'pages': pages,
+        'volume': volume,
+        'source': source,
         'isbn': isbn,
+        'doi': doi,
         'url': url,
         'date': date,
         'tag': tag
@@ -134,7 +152,7 @@ def book_text(obj):
     for i in range(len(obj['authors'])):
         obj['authors'][i] = obj['authors'][i].replace(' ', '\u00A0')
     text = ''
-    if obj['book_type'] == 'book':
+    if obj['book_type'] == 'book' or obj['book_type'] == 'article':
         if len(obj['authors']) > 0 and len(obj['authors']) < 4:
             text += author_name + ' '
         text += obj['title']
@@ -143,14 +161,16 @@ def book_text(obj):
         if len(obj['authors']) > 0 or obj['other_people']:
             text += ' / '
             text += output_authors(obj['authors'], obj['other_people'])
+        if obj['source']:
+            text += ' // ' + obj['source']
         text += '. – '
         if obj['edition']:
             text += obj['edition'] + '. – '
         
         missing_fields = ''
-        if obj['city'] is None:
+        if obj['book_type'] == 'book' and obj['city'] is None:
             missing_fields += 'city, '
-        if obj['publisher'] is None:
+        if obj['book_type'] == 'book' and obj['publisher'] is None:
             missing_fields += 'publisher, '
         if obj['year'] is None:
             missing_fields += 'year, '
@@ -162,10 +182,17 @@ def book_text(obj):
             log(f'ERROR: please specify {fields} for the book {title}')
             return 'ERROR'
         
-        text += obj['city'] + ' : ' + obj['publisher'] + ', '
-        text += str(obj['year']) + '. – ' + str(obj['pages']) + ' с.'
+        if obj['book_type'] == 'book':
+            text += obj['city'] + ' : ' + obj['publisher'] + ', '
+            text += str(obj['year']) + '. – ' + str(obj['pages']) + ' с.'
+        else:
+            if obj['volume']:
+                text += obj['volume'] + '. – '
+            text += str(obj['year']) + '. – с. ' + str(obj['pages'])
         if obj['isbn']:
-            text += '. – ISBN ' + obj['isbn'] + '.'
+            text += ' – ISBN ' + obj['isbn'] + '.'
+        elif obj['doi']:
+            text += ' – DOI ' + obj['doi'] + '.'
     elif obj['book_type'] == 'website':
         text += obj['title']
         if obj['title_info']:
