@@ -8,6 +8,29 @@ from lxml import etree
 
 from bibliography_parser import book_text
 from logger import log
+from string import ascii_lowercase
+
+def int_to_roman(num):
+        val = [
+            1000, 900, 500, 400,
+            100, 90, 50, 40,
+            10, 9, 5, 4,
+            1
+            ]
+        syb = [
+            "M", "CM", "D", "CD",
+            "C", "XC", "L", "XL",
+            "X", "IX", "V", "IV",
+            "I"
+            ]
+        roman_num = ''
+        i = 0
+        while num > 0:
+            for _ in range(num // val[i]):
+                roman_num += syb[i]
+                num -= val[i]
+            i += 1
+        return roman_num
 
 class DocxGenerator:
     def __init__(self):
@@ -180,13 +203,24 @@ class DocxGenerator:
         paragraph = self.document.add_paragraph()
         self.add_text(paragraph, obj['children'])
         self.last_line_empty = text == ""
+
+    def list_number(self, number, level):
+        if level == 1:
+            return str(number)
+        elif level == 2:
+            return ascii_lowercase[number - 1]
+        elif level == 3:
+            return int_to_roman(number).lower()
+        else:
+            return str(number)
+
     def generate_list(self, obj):
         ordered = obj['ordered']
         for i, elem in enumerate(obj['children'], start=1):
             text = self.aggregate_text(elem['children'])
             prefix = (obj['level']-1) * '\t'
             if ordered:
-                prefix += str(i) + ') '
+                prefix += self.list_number(i, obj['level']) + ') '
             else:
                 prefix += '- '
             if text[-1] != ',' and i != len(obj['children']):
@@ -266,8 +300,8 @@ class DocxGenerator:
 
         self.picture_global_counter += 1
         self.picture_section_counter += 1
-        picture_text = self.settings.get('pictureName', 'Рисунок')
-        picture_text += ' ' + self.picture_number() + ' – ' + obj['text']
+        picture_text = self.settings.get('pictureName', 'Рисунок') 
+        picture_text += ' ' + self.picture_number() + ' – '
         path = obj['path']
         try:
             self.document.add_picture(path, width=width, height=height)
@@ -278,6 +312,7 @@ class DocxGenerator:
         para.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
         para = self.document.add_paragraph(picture_text)
+        self.add_text(para, obj['children'])
         para.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
         self.last_line_empty = False

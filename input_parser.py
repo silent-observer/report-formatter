@@ -42,8 +42,7 @@ def render_block_table(children, width, height, text, tag):
         'text': text,
         'width': int(width),
         'height': int(height),
-        'tag': tag,
-        'children': children
+        'tag': tag
     }
 def parse_table_numbering(inline, m, state):
     return {'type': 'table_numbering', 'text': m.group(1)}
@@ -73,15 +72,14 @@ def parse_picture(inline, m, state):
             size = float(m.group(3))
         except (ValueError, TypeError):
             log('Warning: picture size MUST be a float!')
-        return {'type': 'picture', 'text': '',
-            'params': (symbol, size, path, text, tag)}
+        return {'type': 'picture', 'text': text,
+            'params': (symbol, size, path, tag)}
     else:
-        return {'type': 'picture', 'text': '',
-            'params': (None, None, path, text, tag)}
-def render_picture(children, symbol, size, path, text, tag):
+        return {'type': 'picture', 'text': text,
+            'params': (None, None, path, tag)}
+def render_picture(children, symbol, size, path, tag):
     return {
         'type': 'picture', 
-        'text': text, 
         'symbol': symbol, 
         'size': size, 
         'path': path,
