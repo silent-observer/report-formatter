@@ -1,5 +1,7 @@
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.style import WD_STYLE_TYPE
+
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 from docx.shared import Cm
@@ -9,6 +11,8 @@ from lxml import etree
 from bibliography_parser import book_text
 from logger import log
 from string import ascii_lowercase
+
+from list_helper import list_number
 
 def int_to_roman(num):
         val = [
@@ -44,10 +48,18 @@ class DocxGenerator:
         self.book_tags = {}
         self.table_numbering = 'global'
         self.picture_numbering = 'global'
+
+        self.current_list = None
         
         xslt = etree.parse('mml2omml.xsl')
         self.math_transform = etree.XSLT(xslt)
-                
+        
+        styles = self.document.styles
+        paragraph_styles = [
+            s for s in styles if s.type == WD_STYLE_TYPE.PARAGRAPH
+        ]
+        for style in paragraph_styles:
+            print(style.name)
     
     def reset_counters(self):
         self.current_section = 0
@@ -216,19 +228,38 @@ class DocxGenerator:
 
     def generate_list(self, obj):
         ordered = obj['ordered']
-        for i, elem in enumerate(obj['children'], start=1):
-            text = self.aggregate_text(elem['children'])
-            prefix = (obj['level']-1) * '\t'
+        level = obj['level']
+        list_style = self.settings.get('listStyle', 'word')
+        if list_style == 'text':
+            for i, elem in enumerate(obj['children'], start=1):
+                text = self.aggregate_text(elem['children'])
+                prefix = (level-1) * '\t'
+                if ordered:
+                    prefix += self.list_number(i, level) + ') '
+                else:
+                    prefix += '- '
+                if text[-1] != ',' and i != len(obj['children']):
+                    text += ','
+                #if paragraph is None:
+                paragraph = self.document.add_paragraph()
+                paragraph.add_run(prefix)
+                self.add_text(paragraph, elem['children'])
+        elif list_style == 'word':
             if ordered:
-                prefix += self.list_number(i, obj['level']) + ') '
+                style = 'Main Number List'
             else:
-                prefix += '- '
-            if text[-1] != ',' and i != len(obj['children']):
-                text += ','
-            #if paragraph is None:
-            paragraph = self.document.add_paragraph()
-            paragraph.add_run(prefix)
-            self.add_text(paragraph, elem['children'])
+                style = 'Bullet List'
+            if level > 1:
+                style += ' ' + str(level)
+
+            for elem in obj['children']:
+                paragraph = self.document.add_paragraph(style=style)
+                list_number(self.document, paragraph, self.current_list, level - 1, ordered)
+                paragraph.style = 'List Paragraph'
+                self.current_list = paragraph
+                self.add_text(paragraph, elem['children'])
+            if level == 1:
+                self.current_list = None
 
         self.last_line_empty = False
     def generate_equation(self, run, obj):

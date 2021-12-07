@@ -35,7 +35,8 @@ else:
             'tableName': 'Таблица',
             'picturesArePadded': False,
             'pictureName': 'Рисунок',
-            'structNames': ['РЕФЕРАТ', 'ВВЕДЕНИЕ', 'ЗАКЛЮЧЕНИЕ']
+            'structNames': ['РЕФЕРАТ', 'ВВЕДЕНИЕ', 'ЗАКЛЮЧЕНИЕ'],
+            'listStyle': 'word'
         }
         generator.set_settings(settings)
         generator.generate_ast(parsed)
