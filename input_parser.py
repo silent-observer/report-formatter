@@ -4,7 +4,7 @@ from bibliography_parser import DirectiveBook
 from logger import log
 
 EQUATION_PATTERN = r'''(?<!\$)\$([^$\n]+)\$'''
-BLOCK_EQUATION_PATTERN = re.compile(r''' *\$\$([^$\n]*)\$\$\n''')
+BLOCK_EQUATION_PATTERN = re.compile(r''' *\$\$([^$\n]*)\$\$\n''', re.M)
 
 def parse_equation(inline, m, state):
     text = m.group(1)
@@ -12,7 +12,7 @@ def parse_equation(inline, m, state):
     text = text.replace('*', '⋅')
     return 'equation', text
 def parse_block_equation(inline, m, state):
-    return {'type': 'block_equation', 'text': m.group(1)}
+    return {'type': 'block_equation', 'text': m.group(1).replace('\r\n', '').replace('\n', '')}
 
 def plugin_equation(md):
     md.inline.register_rule('equation', EQUATION_PATTERN, parse_equation)

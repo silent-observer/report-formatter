@@ -126,10 +126,12 @@ def render_ast_book(children, title, book_type, authors,
         'tag': tag
     }
 
+def is_english(text):
+    return text[:10].isascii()
 
 def name_reverse(text):
     l = text.split(' ')
-    return '\u00A0'.join([l[-1]] + l[:-1])
+    return l[-1] + ',\u00A0' + '\u00A0'.join(l[:-1])
 
 def output_authors(authors, other_people):
     if len(authors) > 0:
@@ -152,6 +154,8 @@ def book_text(obj):
     for i in range(len(obj['authors'])):
         obj['authors'][i] = obj['authors'][i].replace(' ', '\u00A0')
     text = ''
+    english = is_english(obj['title'])
+    page = 'p' if english else 'с'
     if obj['book_type'] == 'book' or obj['book_type'] == 'article':
         if len(obj['authors']) > 0 and len(obj['authors']) < 4:
             text += author_name + ' '
@@ -174,7 +178,7 @@ def book_text(obj):
             missing_fields += 'publisher, '
         if obj['year'] is None:
             missing_fields += 'year, '
-        if obj['pages'] is None:
+        if obj['book_type'] == 'book' and obj['pages'] is None:
             missing_fields += 'pages, '
         if missing_fields != '':
             fields = missing_fields[:-2]
@@ -184,11 +188,13 @@ def book_text(obj):
         
         if obj['book_type'] == 'book':
             text += obj['city'] + ' : ' + obj['publisher'] + ', '
-            text += str(obj['year']) + '. – ' + str(obj['pages']) + ' с.'
+            text += str(obj['year']) + '. – ' + str(obj['pages']) + ' ' + page + '.'
         else:
             if obj['volume']:
                 text += obj['volume'] + '. – '
-            text += str(obj['year']) + '. – с. ' + str(obj['pages'])
+            text += str(obj['year']) + '. – ' + page.upper() + '.'
+            if obj['pages']:
+                text += ' ' + str(obj['pages']) + '.'
         if obj['isbn']:
             text += ' – ISBN ' + obj['isbn'] + '.'
         elif obj['doi']:

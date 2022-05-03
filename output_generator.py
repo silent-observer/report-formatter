@@ -212,9 +212,12 @@ class DocxGenerator:
         
     def generate_paragraph(self, obj):
         text = self.aggregate_text(obj['children'])
-        paragraph = self.document.add_paragraph()
-        self.add_text(paragraph, obj['children'])
-        self.last_line_empty = text == ""
+        if text.startswith('$$') and text.endswith('$$'):
+            self.generate_block_equation(obj)
+        else:
+            paragraph = self.document.add_paragraph()
+            self.add_text(paragraph, obj['children'])
+            self.last_line_empty = text == ""
 
     def list_number(self, number, level):
         if level == 1:
@@ -292,6 +295,8 @@ class DocxGenerator:
             text = obj['text']
         else:
             text = self.aggregate_text(obj['children'])
+        if text.startswith('$$') and text.endswith('$$'):
+            text = text[2:-2]
         if text == '':
             mainTextElem.text = self.settings.get('equationPlaceholder', 'ВВЕДИТЕ УРАВНЕНИЕ')
         else:
@@ -422,7 +427,7 @@ class DocxGenerator:
         self.generate_structural_heading(
             self.settings.get('biblioTitle', 'СПИСОК ИСПОЛЬЗУЕМЫХ ИСТОЧНИКОВ'))
         for i, book in enumerate(self.books, start=1):
-            self.document.add_paragraph(str(i) + '. ' + book)
+            self.document.add_paragraph(str(i) + '\t' + book)
 
     def register_ast(self, ast):
         for x in ast:
